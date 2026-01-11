@@ -54,7 +54,10 @@ def transcribe_audio(audio_path: Path, model=WHISPER_MODEL, use_cache=True, cach
     # Extract audio if the input is a video file (M4A is already audio)
     video_extensions = ['.mp4', '.avi', '.mov', '.mkv']
     if audio_path.suffix.lower() in video_extensions:
-        audio_path = extract_audio(audio_path)
+        # Extract audio to outputs directory
+        output_dir = Path("/app/data/outputs") if Path("/app/data/outputs").exists() else audio_path.parent
+        audio_path = extract_audio(audio_path, output_dir=output_dir)
+        logger.info(f"Audio extracted to: {audio_path}")
     
     # Configure GPU if available and requested
     device = torch.device("cpu")

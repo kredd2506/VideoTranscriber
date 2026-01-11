@@ -19,7 +19,8 @@ COPY requirements.txt .
 RUN pip install --upgrade pip setuptools wheel
 
 # Install PyTorch CPU version first (for non-GPU builds)
-RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+# Use specific versions compatible with pyannote.audio
+RUN pip install --no-cache-dir torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cpu
 
 # Install remaining Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt

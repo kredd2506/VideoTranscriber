@@ -13,18 +13,21 @@ humanize>=4.6.0
 # torchaudio >= 2.1.0 is REQUIRED for diarization to work properly
 
 # Transformers ecosystem
-transformers>=4.35.0
+# Pin to version compatible with PyTorch 2.1.0
+transformers==4.35.2
 tokenizers>=0.14.0
 
 # ML dependencies - use flexible versions for compatibility
-numpy>=1.24.0
+# Pin numpy to 1.x for pyannote.audio 3.1.1 compatibility (np.NaN removed in numpy 2.0)
+numpy>=1.24.0,<2.0.0
 scipy>=1.10.0
 scikit-learn>=1.3.0
 
 # Audio processing and ML models
 # speechbrain 1.0+ required for pyannote compatibility
 speechbrain>=1.0.0
-pyannote.audio>=3.1.1
+# Pin pyannote.audio to 3.1.1 for torchaudio 2.1.0 compatibility
+pyannote.audio==3.1.1
 pytorch-lightning>=2.0.0
 
 # Other dependencies

@@ -25,14 +25,13 @@ services:
       # Cache settings
       - TRANSFORMERS_CACHE=/app/data/cache/transformers
       - WHISPER_CACHE=/app/data/cache/whisper
-    # For GPU access (uncomment if you have NVIDIA GPU and nvidia-docker)
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
+    # Resource limits for M4 Pro MacBook
+    deploy:
+      resources:
+        limits:
+          memory: 12G
+        reservations:
+          memory: 8G
     restart: unless-stopped
     # For Linux hosts, you might prefer host networking for better Ollama access
     # network_mode: host  # Uncomment for Linux hosts

@@ -4,6 +4,7 @@ from utils.transcription import transcribe_audio
 from utils.summarization import summarize_text
 from utils.validation import validate_environment
 from utils.export import export_transcript
+from utils.progress_tracker import save_progress, load_progress, clear_progress
 from pathlib import Path
 import os
 import logging
@@ -64,7 +65,15 @@ def main():
         layout="wide",
         initial_sidebar_state="expanded"
     )
-    
+
+    # Initialize session state for persistent status tracking
+    if 'processing_status' not in st.session_state:
+        st.session_state.processing_status = None
+    if 'processing_error' not in st.session_state:
+        st.session_state.processing_error = None
+    if 'last_error_trace' not in st.session_state:
+        st.session_state.last_error_trace = None
+
     # Custom CSS for better UI
     st.markdown("""
     <style>
@@ -103,6 +112,46 @@ def main():
     
     st.title("🎥 OBS Recording Transcriber")
     st.caption("Process your OBS recordings with AI transcription and summarization")
+
+    # Load and display persistent progress from file (survives crashes)
+    saved_progress = load_progress()
+    if saved_progress:
+        progress_status = saved_progress.get('status', 'Unknown')
+        progress_pct = saved_progress.get('progress', 0)
+        progress_error = saved_progress.get('error')
+        progress_time = saved_progress.get('timestamp', '')
+
+        st.warning(f"⚠️ **Last Processing Attempt** ({progress_time})")
+        st.progress(progress_pct / 100.0)
+        st.info(f"📊 Status: {progress_status} ({progress_pct}%)")
+
+        if progress_error:
+            st.error(f"❌ Error: {progress_error}")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔄 Retry Processing"):
+                clear_progress()
+                st.rerun()
+        with col2:
+            if st.button("🗑️ Clear Progress"):
+                clear_progress()
+                st.rerun()
+
+    # Display persistent error if exists
+    if st.session_state.processing_error:
+        st.error(f"❌ Last Processing Error: {st.session_state.processing_error}")
+        if st.session_state.last_error_trace:
+            with st.expander("🔍 Show full error details"):
+                st.code(st.session_state.last_error_trace)
+        if st.button("Clear Error"):
+            st.session_state.processing_error = None
+            st.session_state.last_error_trace = None
+            st.rerun()
+
+    # Display persistent status if exists
+    if st.session_state.processing_status:
+        st.info(f"ℹ️ Status: {st.session_state.processing_status}")
 
     # Sidebar configuration
     st.sidebar.header("Settings")
@@ -339,10 +388,14 @@ def main():
         status_text = st.empty()
         
         try:
+            # Clear any old progress
+            clear_progress()
+
             # Update progress
             status_text.text("Extracting audio...")
             progress_bar.progress(10)
-            
+            save_progress("Extracting audio", 10)
+
             # Process based on selected features
             if use_diarization and DIARIZATION_AVAILABLE and hf_token:
                 # Transcribe with speaker diarization
@@ -372,14 +425,27 @@ def main():
                 original_text = original_transcript
             else:
                 # Standard transcription
-                status_text.text("Transcribing audio...")
-                segments, transcript = transcribe_audio(
-                    selected_file, 
-                    model=transcription_model,
-                    use_cache=use_cache,
-                    use_gpu=use_gpu,
-                    memory_fraction=memory_fraction
-                )
+                st.session_state.processing_status = f"Transcribing with {transcription_model} model..."
+                save_progress(f"Transcribing with {transcription_model} model", 30)
+                status_text.text(f"🎤 Transcribing with Whisper {transcription_model} model...")
+                st.info(f"⏳ This may take several minutes for large files. Please be patient...")
+                try:
+                    segments, transcript = transcribe_audio(
+                        selected_file,
+                        model=transcription_model,
+                        use_cache=use_cache,
+                        use_gpu=use_gpu,
+                        memory_fraction=memory_fraction
+                    )
+                    st.session_state.processing_status = "Transcription completed successfully!"
+                    save_progress("Transcription completed", 50)
+                    status_text.text("✅ Transcription completed!")
+                except Exception as transcription_error:
+                    st.session_state.processing_status = f"Transcription failed: {str(transcription_error)}"
+                    st.session_state.processing_error = str(transcription_error)
+                    save_progress("Transcription FAILED", 30, error=str(transcription_error))
+                    status_text.text(f"❌ Transcription failed: {str(transcription_error)}")
+                    raise
             
             progress_bar.progress(50)
             
@@ -535,10 +601,23 @@ def main():
                 progress_bar.progress(100)
                 status_text.text("Processing complete!")
             else:
-                st.error("❌ Failed to process recording")
+                status_text.text("❌ Processing failed - no transcript generated")
+                st.error("❌ Failed to process recording - transcription returned empty")
         except Exception as e:
-            st.error(f"An error occurred: {e}")
-            st.write(e)  # This will show the traceback in the Streamlit app
+            import traceback
+            error_details = traceback.format_exc()
+
+            # Save to session state for persistence
+            st.session_state.processing_error = str(e)
+            st.session_state.last_error_trace = error_details
+            st.session_state.processing_status = f"Failed at transcription step"
+
+            status_text.text(f"❌ Error: {str(e)}")
+            st.error(f"❌ An error occurred during processing:")
+            st.code(str(e))
+            with st.expander("🔍 Show full error details"):
+                st.code(error_details)
+            st.warning("💡 **IMPORTANT**: Try using 'tiny' Whisper model instead of 'base'. The tiny model uses much less memory and should complete successfully.")
 
 if __name__ == "__main__":
     main()
