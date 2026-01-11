@@ -11,6 +11,7 @@ import json
 from datetime import datetime
 import logging
 from utils.video_chat import VideoChat, check_ollama_available
+from utils.video_analysis import run_analysis
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -183,6 +184,10 @@ def main():
         st.session_state.chat = None
     if 'files' not in st.session_state:
         st.session_state.files = None
+    if 'analysis_report' not in st.session_state:
+        st.session_state.analysis_report = None
+    if 'analysis_results' not in st.session_state:
+        st.session_state.analysis_results = None
 
     # Sidebar for settings
     with st.sidebar:
@@ -326,8 +331,40 @@ def main():
     if st.session_state.transcript:
         st.divider()
 
+        # Add analysis button
+        col_analyze1, col_analyze2 = st.columns([3, 1])
+        with col_analyze1:
+            st.markdown("### 📊 Deep Analysis Available")
+            st.caption("Run comprehensive AI analysis with 5 Whys, goal identification, and strategic insights")
+        with col_analyze2:
+            if st.button("🔍 Run Deep Analysis", type="secondary"):
+                with st.spinner("Running comprehensive analysis..."):
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+
+                    def progress_callback(pct, msg):
+                        progress_bar.progress(pct)
+                        status_text.text(msg)
+
+                    output_dir = Path(video_folder).parent / "outputs"
+                    analysis_data = run_analysis(
+                        st.session_state.transcript,
+                        st.session_state.video_name,
+                        ollama_model,
+                        output_dir,
+                        progress_callback
+                    )
+
+                    st.session_state.analysis_report = analysis_data['report_text']
+                    st.session_state.analysis_results = analysis_data['results']
+
+                    progress_bar.progress(100)
+                    status_text.text("✅ Analysis complete!")
+                    st.success(f"Analysis saved to: {analysis_data['report_path'].name}")
+                    st.rerun()
+
         # Create tabs for different views
-        tab1, tab2, tab3, tab4 = st.tabs(["💬 Chat", "📝 Summary", "📄 Transcript", "💾 Downloads"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["💬 Chat", "📝 Summary", "📄 Transcript", "🔍 Deep Analysis", "💾 Downloads"])
 
         with tab1:
             st.subheader("💬 Chat About This Video")
@@ -381,6 +418,51 @@ def main():
             st.text_area("Transcript", st.session_state.transcript, height=400)
 
         with tab4:
+            st.subheader("🔍 Deep Analysis Report")
+
+            if st.session_state.analysis_report:
+                # Display analysis results in expandable sections
+                if st.session_state.analysis_results:
+                    st.markdown("#### Analysis Components")
+
+                    for analysis in st.session_state.analysis_results['analyses']:
+                        with st.expander(f"📌 {analysis['agent']}", expanded=False):
+                            st.markdown(analysis['analysis'])
+
+                    st.divider()
+
+                # Full report
+                st.markdown("#### Complete Report")
+                st.text_area(
+                    "Full Analysis Report",
+                    st.session_state.analysis_report,
+                    height=500,
+                    help="Complete analysis report with all sections"
+                )
+
+                # Download button
+                st.download_button(
+                    "⬇️ Download Analysis Report",
+                    data=st.session_state.analysis_report,
+                    file_name=f"{st.session_state.video_name}_analysis_report.txt",
+                    mime="text/plain"
+                )
+            else:
+                st.info("👆 Click 'Run Deep Analysis' above to generate a comprehensive analysis report")
+                st.markdown("""
+                **The Deep Analysis includes:**
+
+                - 🎯 **Theme Analysis** - Main themes and topics identified
+                - 🎯 **Goal Identification** - Stated and implied objectives
+                - 🔄 **5 Whys Analysis** - Root cause analysis of main issues
+                - 👥 **Stakeholder Analysis** - Key players and their perspectives
+                - ✅ **Action Items** - Decisions, tasks, and next steps
+                - 💡 **Strategic Insights** - Recommendations and key observations
+
+                This multi-agent analysis provides deep understanding of the video content.
+                """)
+
+        with tab5:
             st.subheader("💾 Download Files")
 
             col1, col2, col3 = st.columns(3)

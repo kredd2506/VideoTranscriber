@@ -8,8 +8,9 @@ Simple video transcription tool using Whisper (local) + Ollama (local AI) for su
 
 1. **Transcribes** your videos using OpenAI's Whisper (runs locally on your Mac)
 2. **Summarizes** content using Ollama (runs locally - no cloud needed)
-3. **Chat** with AI about your video - ask questions, get insights, explore topics
-4. **Outputs**: transcript (TXT), subtitles (SRT, VTT), AI summary, and chat history
+3. **Deep Analysis** with AI agents - 5 Whys, goal identification, stakeholder analysis, strategic insights
+4. **Chat** with AI about your video - ask questions, get insights, explore topics
+5. **Outputs**: transcript (TXT), subtitles (SRT, VTT), AI summary, analysis report, and chat history
 
 ## Quick Start (Mac)
 
@@ -74,6 +75,20 @@ Then open your browser to `http://localhost:8501`
 
 4. **Click Process**: Wait for transcription and summary
 
+### Deep Analysis
+
+Click **"Run Deep Analysis"** to generate a comprehensive AI-powered analysis report:
+
+**Multi-Agent Analysis System** includes:
+- 🎯 **Theme Analysis** - Identifies main themes and recurring patterns
+- 🎯 **Goal Identification** - Extracts stated and implied objectives, success criteria, constraints
+- 🔄 **5 Whys Analysis** - Root cause analysis to understand fundamental reasons
+- 👥 **Stakeholder Analysis** - Identifies key players, their interests, and concerns
+- ✅ **Action Items** - Extracts decisions, tasks, owners, and deadlines
+- 💡 **Strategic Insights** - Generates recommendations and identifies risks/opportunities
+
+This uses multiple AI agents working together to deeply understand your video content and goals.
+
 ### Chatting About Your Video
 
 After processing, you can chat with AI about your video:
@@ -87,7 +102,7 @@ The AI has access to the full transcript and will answer based on the video cont
 
 ### Downloads
 
-Get your transcript, summary, subtitles, and chat history from the Downloads tab.
+Get your transcript, summary, subtitles, analysis report, and chat history from the Downloads tab.
 
 ## Command Line Usage
 
