@@ -151,6 +151,20 @@ docker-compose up -d
 
 **Note**: Docker setup has memory limitations. Native Mac setup (above) works better.
 
+## Technical Documentation
+
+Want to understand how everything works under the hood?
+
+Read **[TECHNICAL.md](TECHNICAL.md)** for detailed explanations of:
+- System architecture and data flow
+- Why we chose each technology
+- How Whisper transcription works
+- How Ollama chat works
+- Performance optimization tips
+- Security and privacy details
+
+Perfect for developers who want to customize or extend the system.
+
 ## Support
 
 For help with AI solutions, workflows, or custom implementations:
@@ -159,15 +173,15 @@ For help with AI solutions, workflows, or custom implementations:
 
 ---
 
-## Full-Featured Version
+## Advanced Features
 
-The original [app.py](app.py) includes advanced features like:
+The original [app.py](app.py) includes additional features like:
 - Speaker diarization (identify different speakers)
 - Translation to multiple languages
 - Keyword extraction
 - GPU acceleration
 - Docker deployment
 
-These features require additional setup and dependencies. See [INSTALLATION.md](INSTALLATION.md) for details.
+These require additional setup. See [INSTALLATION.md](INSTALLATION.md) for details.
 
-For most users, the simple version ([app_simple.py](app_simple.py)) is recommended.
+**For most users, the simple version ([app_simple.py](app_simple.py)) is recommended.**
