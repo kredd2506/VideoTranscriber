@@ -1,14 +1,15 @@
 # Video Transcriber
 
-Simple video transcription tool using Whisper (local) + Ollama (local AI) for summarization.
+Simple video transcription tool using Whisper (local) + Ollama (local AI) for summarization and chat.
 
 **Supported Formats**: MP4, MOV, AVI, MKV
 
 ## What This Does
 
-1. Transcribes your videos using OpenAI's Whisper (runs locally on your Mac)
-2. Generates AI summaries using Ollama (runs locally - no cloud needed)
-3. Outputs: transcript (TXT), subtitles (SRT, VTT), and AI summary
+1. **Transcribes** your videos using OpenAI's Whisper (runs locally on your Mac)
+2. **Summarizes** content using Ollama (runs locally - no cloud needed)
+3. **Chat** with AI about your video - ask questions, get insights, explore topics
+4. **Outputs**: transcript (TXT), subtitles (SRT, VTT), AI summary, and chat history
 
 ## Quick Start (Mac)
 
@@ -56,6 +57,8 @@ Then open your browser to `http://localhost:8501`
 
 ## Using the Simple UI
 
+### Processing Videos
+
 1. **Select Whisper Model**: Choose transcription quality
    - `tiny` - Fastest, least accurate
    - `base` - **Recommended** - Good balance
@@ -65,13 +68,26 @@ Then open your browser to `http://localhost:8501`
 
 2. **Select Ollama Model**: Choose your installed model
    - `llama3` - Fast, good quality
-   - `gpt-oss:20b` - Slower, better summaries
+   - `gpt-oss:20b` - Slower, better summaries and chat
 
 3. **Video Folder**: Point to where your videos are
 
 4. **Click Process**: Wait for transcription and summary
 
-5. **Download**: Get your transcript, summary, and subtitles
+### Chatting About Your Video
+
+After processing, you can chat with AI about your video:
+
+- **Ask Questions**: "What were the main topics discussed?"
+- **Get Details**: "What did they say about the budget?"
+- **Find Information**: "When did they mention the deadline?"
+- **Explore Topics**: "Tell me more about the technical approach"
+
+The AI has access to the full transcript and will answer based on the video content.
+
+### Downloads
+
+Get your transcript, summary, subtitles, and chat history from the Downloads tab.
 
 ## Command Line Usage
 

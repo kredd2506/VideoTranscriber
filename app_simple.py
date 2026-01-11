@@ -10,6 +10,7 @@ from pathlib import Path
 import json
 from datetime import datetime
 import logging
+from utils.video_chat import VideoChat, check_ollama_available
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -36,15 +37,7 @@ def get_ollama_models():
 
 def check_ollama_running():
     """Check if Ollama is running."""
-    try:
-        result = subprocess.run(
-            ["curl", "-s", "http://localhost:11434/api/tags"],
-            capture_output=True,
-            timeout=2
-        )
-        return result.returncode == 0
-    except:
-        return False
+    return check_ollama_available()
 
 
 def transcribe_video(video_path, whisper_model="base", output_dir=None):
@@ -155,11 +148,11 @@ def main():
     st.set_page_config(
         page_title="Video Transcriber",
         page_icon="🎥",
-        layout="centered"
+        layout="wide"
     )
 
     st.title("🎥 Video Transcriber")
-    st.caption("Transcribe videos with Whisper + Summarize with Ollama")
+    st.caption("Transcribe videos with Whisper + Chat with Ollama")
 
     # Check if Ollama is running
     ollama_running = check_ollama_running()
@@ -179,12 +172,22 @@ def main():
 
     st.success(f"✅ Ollama is running with {len(available_models)} models")
 
-    # Settings
-    st.subheader("Settings")
+    # Initialize session state
+    if 'transcript' not in st.session_state:
+        st.session_state.transcript = None
+    if 'summary' not in st.session_state:
+        st.session_state.summary = None
+    if 'video_name' not in st.session_state:
+        st.session_state.video_name = None
+    if 'chat' not in st.session_state:
+        st.session_state.chat = None
+    if 'files' not in st.session_state:
+        st.session_state.files = None
 
-    col1, col2 = st.columns(2)
+    # Sidebar for settings
+    with st.sidebar:
+        st.header("⚙️ Settings")
 
-    with col1:
         whisper_model = st.selectbox(
             "Whisper Model",
             ["tiny", "base", "small", "medium", "large"],
@@ -192,19 +195,28 @@ def main():
             help="Larger models are more accurate but slower. 'base' is recommended."
         )
 
-    with col2:
         ollama_model = st.selectbox(
             "Ollama Model",
             available_models,
-            help="Select the model for summarization"
+            help="Select the model for summarization and chat"
         )
 
-    # Video folder
-    video_folder = st.text_input(
-        "Video Folder",
-        value=str(Path.home() / "Documents/GitHub/VideoTranscriber/videos"),
-        help="Path to folder containing your videos"
-    )
+        # Video folder
+        video_folder = st.text_input(
+            "Video Folder",
+            value=str(Path.home() / "Documents/GitHub/VideoTranscriber/videos"),
+            help="Path to folder containing your videos"
+        )
+
+        st.divider()
+
+        # Export chat option
+        if st.session_state.chat and st.session_state.chat.get_history():
+            if st.button("💾 Export Chat History"):
+                output_dir = Path(video_folder).parent / "outputs"
+                chat_file = output_dir / f"{st.session_state.video_name}_chat.txt"
+                if st.session_state.chat.export_chat(chat_file):
+                    st.success(f"Chat saved to {chat_file.name}")
 
     video_path = Path(video_folder)
 
@@ -265,6 +277,20 @@ def main():
 
             progress_bar.progress(80)
 
+            # Save to session state
+            st.session_state.transcript = transcript
+            st.session_state.summary = summary
+            st.session_state.video_name = selected_video.stem
+            st.session_state.files = files
+
+            # Initialize chat
+            st.session_state.chat = VideoChat(
+                transcript=transcript,
+                video_name=selected_video.stem,
+                model=ollama_model,
+                summary=summary
+            )
+
             # Save summary
             if summary:
                 summary_file = output_dir / f"{selected_video.stem}_summary.txt"
@@ -289,23 +315,72 @@ def main():
             progress_bar.progress(100)
             status.text("✅ Processing complete!")
 
-            # Display results
-            st.success("✅ Processing complete!")
+            st.success("✅ Processing complete! You can now chat about the video below.")
+            st.rerun()
 
-            tab1, tab2 = st.tabs(["Summary", "Transcript"])
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
+            logger.exception("Processing failed")
 
-            with tab1:
-                if summary:
-                    st.markdown("### 📝 Summary")
-                    st.write(summary)
-                else:
-                    st.warning("Summary not available")
+    # Display results if available
+    if st.session_state.transcript:
+        st.divider()
 
-            with tab2:
-                st.markdown("### 📄 Full Transcript")
-                st.text_area("Transcript", transcript, height=400)
+        # Create tabs for different views
+        tab1, tab2, tab3, tab4 = st.tabs(["💬 Chat", "📝 Summary", "📄 Transcript", "💾 Downloads"])
 
-            # Downloads
+        with tab1:
+            st.subheader("💬 Chat About This Video")
+            st.caption(f"Ask questions about: {st.session_state.video_name}")
+
+            # Chat interface
+            if 'chat_messages' not in st.session_state:
+                st.session_state.chat_messages = []
+
+            # Display chat history
+            for msg in st.session_state.chat_messages:
+                with st.chat_message("user"):
+                    st.write(msg["question"])
+                with st.chat_message("assistant"):
+                    st.write(msg["answer"])
+
+            # Chat input
+            if question := st.chat_input("Ask a question about the video..."):
+                # Display user message
+                with st.chat_message("user"):
+                    st.write(question)
+
+                # Get AI response
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking..."):
+                        answer = st.session_state.chat.ask(question)
+                        st.write(answer)
+
+                # Save to session state
+                st.session_state.chat_messages.append({
+                    "question": question,
+                    "answer": answer
+                })
+
+            # Clear chat button
+            if st.session_state.chat_messages:
+                if st.button("🗑️ Clear Chat History"):
+                    st.session_state.chat_messages = []
+                    st.session_state.chat.clear_history()
+                    st.rerun()
+
+        with tab2:
+            if st.session_state.summary:
+                st.markdown("### 📝 Summary")
+                st.write(st.session_state.summary)
+            else:
+                st.warning("Summary not available")
+
+        with tab3:
+            st.markdown("### 📄 Full Transcript")
+            st.text_area("Transcript", st.session_state.transcript, height=400)
+
+        with tab4:
             st.subheader("💾 Download Files")
 
             col1, col2, col3 = st.columns(3)
@@ -313,37 +388,36 @@ def main():
             with col1:
                 st.download_button(
                     "📄 Transcript (TXT)",
-                    data=transcript,
-                    file_name=f"{selected_video.stem}.txt",
+                    data=st.session_state.transcript,
+                    file_name=f"{st.session_state.video_name}.txt",
                     mime="text/plain"
                 )
 
             with col2:
-                if summary:
+                if st.session_state.summary:
                     st.download_button(
                         "📝 Summary",
-                        data=summary,
-                        file_name=f"{selected_video.stem}_summary.txt",
+                        data=st.session_state.summary,
+                        file_name=f"{st.session_state.video_name}_summary.txt",
                         mime="text/plain"
                     )
 
             with col3:
-                if files.get("srt") and files["srt"].exists():
-                    with open(files["srt"], 'r', encoding='utf-8') as f:
-                        srt_content = f.read()
-                    st.download_button(
-                        "📹 Subtitles (SRT)",
-                        data=srt_content,
-                        file_name=f"{selected_video.stem}.srt",
-                        mime="text/plain"
-                    )
+                if st.session_state.files and st.session_state.files.get("srt"):
+                    srt_file = st.session_state.files["srt"]
+                    if srt_file.exists():
+                        with open(srt_file, 'r', encoding='utf-8') as f:
+                            srt_content = f.read()
+                        st.download_button(
+                            "📹 Subtitles (SRT)",
+                            data=srt_content,
+                            file_name=f"{st.session_state.video_name}.srt",
+                            mime="text/plain"
+                        )
 
             # Show output location
+            output_dir = video_path.parent / "outputs"
             st.info(f"📁 All files saved to: {output_dir}")
-
-        except Exception as e:
-            st.error(f"❌ Error: {str(e)}")
-            logger.exception("Processing failed")
 
 
 if __name__ == "__main__":
